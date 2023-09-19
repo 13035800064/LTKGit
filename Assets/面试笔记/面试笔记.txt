@@ -1,0 +1,117 @@
+
+一.反射
+反射是指可以在程序运行的过程中，动态的查询或修改状态的一种能力
+优点:降低耦合性，灵活性高，不需要知道一个类的内部有什么具体成员变量
+缺点:模糊程序内部逻辑，解释执行效率低
+
+
+二.ugui和ngui的区别
+ngui的label支持超链接url，ugui不支持
+ugui使用mask来进行裁剪，ngui使用panel的clip来进行裁剪
+ngui的渲染顺序是先根据panel的depth来决定，然后再按widget中的depth来进行排序；ugui是根据层级和z轴坐标来进行排序，越往下的层级越先被渲染
+ngui必须先打包图集才能开始制作界面，ugui自带图集打包模式spritepacker
+
+
+三.A星算法
+1.先确定一个地图的中心点
+2.划分格子，同时给格子一个枚举类型，确定格子是否是可行走的，或者是阻挡，以及格子的父对象
+3.定义一个开启列表和一个关闭列表
+4.寻路开始时，将起点放入到关闭列表当中，将周围八个点作为计算，是否可以加入到开启列表当中
+5.将当前格子作为周围格子的父对象，计算格子的时候，有可能在之前找过这一个格子，如果关闭列表或者开启列表当中包含这个格子就不继续计算
+6.将计算到周围八个点中寻路消耗最小的格子加入到关闭列表当中，同时从开启列表当中移除
+        f = g + h  （寻路消耗 = 离起点的距离【实际代价】 + 离终点的距离【预估代价】）
+7.重复5、6步骤，直到找到终点的格子，从终点的格子父对象一路往回找，直到父对象为空就找到了起始点的格子
+
+
+四、Mask和RectMask2D
+    Mask的实现原理：
+Mask会赋予Image一个特殊的材质，这个材质会给Image的每个像素点进行标记，将标记结果存放在一个缓存内（这个缓存叫做 Stencil Buffer）
+当子级UI进行渲染的时候会去检查这个 Stencil Buffer内的标记，如果当前覆盖的区域存在标记（即该区域在Image的覆盖范围内），进行渲染，否则不渲染。
+    RectMask2D的工作流大致如下：
+C#层：找出父物体中所有RectMask2D覆盖区域的交集（FindCullAndClipWorldRect）
+C#层：所有继承MaskGraphic的子物体组件调用方法设置剪裁区域（SetClipRect）传递给Shader
+Shader层：接收到矩形区域_ClipRect，片元着色器中判断像素是否在矩形区域内，不在则透明度设置为0（UnityGet2DClipping ）
+Shader层：丢弃掉alpha小于0.001的元素（clip (color.a - 0.001)）
+
+
+五、委托和事件
+1.委托是一个函数指针数组，可以保存一个或者多个方法得到引用
+2.委托可以作为方法参数传递
+3.事件是为了委托更安全使用，进一步对委托的封装
+4.事件只能在内部被调用，外部只能注册或者注销
+
+
+
+快速排序
+void quickSort(int arr[], int begin, int end)
+{
+	int i, j, t, pivot;
+	if (begin > end) // 递归，直到start = end为止
+		return;
+ 
+	pivot = arr[begin]; // 基准数
+	i = begin;
+	j = end;
+	while (i != j)
+	{
+		// 从右向左找比基准数小的数 （要先从右边开始找）
+		while (arr[j] >= pivot && i < j)
+			j--;
+		// 从左向右找比基准数大的数
+		while (arr[i] <= pivot && i < j)
+			i++;
+		if (i < j)
+		{
+			// 交换两个数在数组中的位置
+			t = arr[i];
+			arr[i] = arr[j];
+			arr[j] = t;
+		}
+	}
+ 
+	// 最终将基准数归位
+	arr[begin] = arr[i];
+	arr[i] = pivot;
+	quickSort(arr, begin, i - 1); // 继续处理左边的，这里是一个递归的过程
+	quickSort(arr, i + 1, end); // 继续处理右边的 ，这里是一个递归的过程
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+UI性能优化篇章
+
+一、 Canvas优化
+1.一个Canvas下的所有UI元素都是合在一个Mesh当中，Mesh过大会导致更新时性能开销很大
+一般一个功能UI界面，都是自成一个Canvas
+
+
+二、动静分类
+每一次变动都会造成Canvas的Mesh更新，常动的元素可自己在一个Canvas下单独更新
+（Canvas不能细分太多，会导致DrawCall上升；因为一个Canvas下的内容会打成一个批次，提交一次DrawCall）
+
+三、打图集
+把一个面板的UI资源放在一个图集里面
+（大图尽量不要和小图放在一个图集）
+
+四、其他要点
+1.不处理点击的物体不要挂载GraphicsRaycaster
+2.少用LayoutGroup或者Content Size Fitter（写算法自己算）
+3.Layout原理：遍历SetDirty对象会消耗性能
